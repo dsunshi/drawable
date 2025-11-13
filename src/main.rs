@@ -4,6 +4,8 @@ use macroquad::rand;
 use spade::handles::{VoronoiVertex::Inner, VoronoiVertex::Outer};
 use spade::{DelaunayTriangulation, Point2, Triangulation};
 
+use drawable::gcode::*;
+
 const POINT_R: f32 = 2.0;
 const LINE_T:  f32 = 1.0;
 
@@ -125,6 +127,8 @@ async fn main() {
     let width  = screen_width()  as f32;
     let height = screen_height() as f32;
 
+    let mut gcode = Printer::new((50.0, 35.0), (254.0, 212.0), PrintMode::DOTS);
+    gcode.set_scale(width, height);
     // Setup
     // Optional random seed
     // rand::srand(macroquad::miniquad::date::now() as _);
@@ -140,6 +144,9 @@ async fn main() {
         _ = triangulation.insert(*point).map_err(|_err| {
             eprintln!("Failed to insert point into triangulation!");
         });
+
+        // gcode test
+        gcode.goto(point.x, point.y);
     }
 
     // for face in triangulation.voronoi_faces() {
@@ -153,6 +160,8 @@ async fn main() {
     //     }
     // }
     // let voronoi_faces = voronoi_shapes(&triangulation);
+
+    gcode.save("drawing.gcode");
 
     loop {
         clear_background(WHITE);
@@ -218,4 +227,5 @@ async fn main() {
 
         next_frame().await
     }
+
 }

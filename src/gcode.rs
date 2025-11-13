@@ -6,6 +6,8 @@ use std::fs::File;
 const FEED_RATE: f32 = 1000.0;
 
 const Z0: f32 = 5.0;
+const Z_END: f32 = 80.0;
+const DEPTH: f32 = 3.0;
 
 pub struct Printer {
     min: (f32, f32),
@@ -13,6 +15,7 @@ pub struct Printer {
     pub width:  f32,
     pub height: f32,
     mode : PrintMode,
+    scale: Option<(f32, f32)>,
     commands:   Vec<String>,
 }
 
@@ -32,18 +35,40 @@ impl Printer {
             width:    maxx - minx,
             height:   maxy - miny,
             mode:     mode,
+            scale:    None,
             commands: Vec::new(),
         }.init()
     }
 
-    pub fn goto(&mut self, x: f32, y: f32) {
+    fn rescale(m: f32, rmin: f32, rmax: f32, tmin: f32, tmax: f32) -> f32 {
+        ((m - rmin) / (rmax - rmin)) * (tmax - tmin) + tmin
+    }
+
+    pub fn set_scale(&mut self, original_width: f32, original_height: f32) {
+        self.scale = Some((original_width, original_height));
+    }
+
+    pub fn goto(&mut self, xp: f32, yp: f32) {
+        let x: f32;
+        let y: f32;
+
+        if let Some((ow, oh)) = self.scale {
+            x = Self::rescale(xp, 0.0, ow, 0.0, self.width);
+            y = Self::rescale(yp, 0.0, oh, 0.0, self.height);
+        } else {
+            x = xp;
+            y = yp;
+        }
+
         if self.mode == PrintMode::DOTS {
-            self.commands.push(format!("G1 X{:.1} Y{:.1}", x, y));
+            self.commands.push(format!("G1 X{:.1} Y{:.1} F{:.1}", x, y, FEED_RATE));
             // Pen down for the dot
-            self.commands.push(format!("G1 Z-1.0"));
-            self.commands.push(format!("G1 Z0.0"));
+            self.commands.push("G91   ; Switch to relative coordinates".to_owned());
+            self.commands.push(format!("G1 Z-1.0 F100"));
+            self.commands.push(format!("G1 Z1.0 F100"));
+            self.commands.push("G90   ; Switch back to  absolute coordinates".to_owned());
         } else if self.mode == PrintMode::LINES {
-            self.commands.push(format!("G1 X{:.1} Y{:.1}", x, y));
+            self.commands.push(format!("G1 X{:.1} Y{:.1} F{:.1}", x, y, FEED_RATE));
         }
         else {
         }
