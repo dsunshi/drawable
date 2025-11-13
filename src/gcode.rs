@@ -51,6 +51,7 @@ impl Printer {
 
     pub fn save(&self, filename: &str) {
         let mut file = File::create(filename).unwrap();
+        // TODO: what about errors?
         for cmd in &self.commands {
             _ = file.write_all(cmd.as_bytes());
             _ = file.write_all("\n".as_bytes());

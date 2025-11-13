@@ -1,7 +1,8 @@
 use macroquad::prelude::*;
 use macroquad::rand;
 
-use spade::{DelaunayTriangulation, Triangulation, Point2};
+use spade::handles::{VoronoiVertex::Inner, VoronoiVertex::Outer};
+use spade::{DelaunayTriangulation, Point2, Triangulation};
 
 const POINT_R: f32 = 2.0;
 const LINE_T:  f32 = 1.0;
@@ -14,6 +15,34 @@ fn draw_point(x: f32, y: f32, color: Color) {
 
 fn as_vec(p: Point2<f32>) -> Vec2 {
     Vec2::new(p.x, p.y)
+}
+
+// Prints out the location of all voronoi edges in a triangulation
+fn log_voronoi_diagram(triangulation: &DelaunayTriangulation<Point2<f32>>) {
+    for edge in triangulation.undirected_voronoi_edges() {
+        match edge.vertices() {
+            [Inner(from), Inner(to)] => {
+                // "from" and "to" are inner faces of the Delaunay triangulation
+                println!(
+                    "Found voronoi edge between {:?} and {:?}",
+                    from.circumcenter(),
+                    to.circumcenter()
+                );
+            }
+            [Inner(from), Outer(edge)] | [Outer(edge), Inner(from)] => {
+                // Some lines don't have a finite end and extend into infinity.
+                println!(
+                    "Found infinite voronoi edge going out of {:?} into the direction {:?}",
+                    from.circumcenter(),
+                    edge.direction_vector()
+                );
+            }
+            [Outer(_), Outer(_)] => {
+                // This case only happens if all vertices of the triangulation lie on the
+                // same line and can probably be ignored.
+            }
+        }
+    }
 }
 
 #[macroquad::main("drawable")]
@@ -37,6 +66,8 @@ async fn main() {
             eprintln!("Failed to insert point into triangulation!");
         });
     }
+
+    log_voronoi_diagram(&triangulation);
 
     loop {
         clear_background(WHITE);
