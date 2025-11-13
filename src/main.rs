@@ -1,15 +1,34 @@
 use macroquad::prelude::*;
+use macroquad::rand;
 
-#[macroquad::main("BasicShapes")]
+use spade::Point2;
+
+const POINT_R: f32 = 2.0;
+
+fn draw_point(x: f32, y: f32, color: Color) {
+    draw_circle(x, y, POINT_R, color);
+}
+
+#[macroquad::main("drawable")]
 async fn main() {
+    let width  = screen_width() as f32;
+    let height = screen_height() as f32;
+
+    // Setup
+    // Optional random seed
+    // rand::srand(macroquad::miniquad::date::now() as _);
+    let mut points:Vec<Point2<f32>> = Vec::new();
+    for _i in 0..100 {
+        points.push(Point2::new(rand::gen_range(0.0, width),
+                                rand::gen_range(0.0, height)));
+    }
+
     loop {
-        clear_background(RED);
+        clear_background(WHITE);
 
-        draw_line(40.0, 40.0, 100.0, 200.0, 15.0, BLUE);
-        draw_rectangle(screen_width() / 2.0 - 60.0, 100.0, 120.0, 60.0, GREEN);
-        draw_circle(screen_width() - 30.0, screen_height() - 30.0, 15.0, YELLOW);
-
-        draw_text("IT WORKS!", 20.0, 20.0, 30.0, DARKGRAY);
+        for point in &points {
+            draw_point(point.x, point.y, BLACK);
+        }
 
         next_frame().await
     }
