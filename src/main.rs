@@ -12,7 +12,7 @@ fn draw_point(x: f32, y: f32, color: Color) {
     draw_circle(x, y, POINT_R, color);
 }
 
-fn p2v(p: Point2<f32>) -> Vec2 {
+fn as_vec(p: Point2<f32>) -> Vec2 {
     Vec2::new(p.x, p.y)
 }
 
@@ -47,9 +47,9 @@ async fn main() {
 
         for face in triangulation.inner_faces() {
           let vertices = face.vertices();
-          let a = p2v(vertices[0].position());
-          let b = p2v(vertices[1].position());
-          let c = p2v(vertices[2].position());
+          let a = as_vec(vertices[0].position());
+          let b = as_vec(vertices[1].position());
+          let c = as_vec(vertices[2].position());
           draw_triangle_lines(a, b, c, LINE_T, BLACK);
         }
 
