@@ -5,11 +5,45 @@ use spade::{DelaunayTriangulation, Point2, Triangulation};
 
 use drawable::gcode::*;
 
+use image::*;
+
 const POINT_R:   f32 = 2.0;
 const LINE_T:    f32 = 1.0;
-const LERP_RATE: f32 = 0.1;
+const LERP_RATE: f32 = 0.01;
+const LUM_LIMIT: f32 = 100.0;
 
-const NUM_POINTS: u32 = 1000;
+const NUM_POINTS: u32 = 10000;
+
+const IMG_IN: &str = "bird.jpg";
+
+fn load_points(filename: &str) -> Vec<Point2<f32>> {
+    let mut points: Vec<Point2<f32>> = Vec::new();
+
+    let image = image::open(filename).unwrap(); // TODO
+    let (width, height) = image.dimensions();
+
+    loop {
+        let x = rand::gen_range(0.0, width as f32);
+        let y = rand::gen_range(0.0, height as f32);
+
+        let pixel = image.get_pixel(x as u32, y as u32);
+        let r = pixel[0] as f32;
+        let g = pixel[1] as f32;
+        let b = pixel[2] as f32;
+
+        let lum = 0.299 * r + 0.587 * g + 0.114 * b;
+        // let lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+        // let lum = (r + g + b) / 3;
+        
+        if rand::gen_range(0.0, LUM_LIMIT) > lum {
+            points.push(Point2::new(x, y));
+        }
+
+        if points.len() >= NUM_POINTS as usize { break; }
+    }
+
+    points
+}
 
 struct Polygon {
     pub points:   Vec<Point2<f32>>,
@@ -149,9 +183,12 @@ fn voronoi_polygons(triangulation: &DelaunayTriangulation<Point2<f32>>, seed_poi
     polygons
 }
 
-
 #[macroquad::main("drawable")]
 async fn main() {
+    let image = image::open(IMG_IN).unwrap(); // TODO
+    let (width, height) = image.dimensions();
+
+    request_new_screen_size(width as f32, height as f32);
     let width  = screen_width()  as f32;
     let height = screen_height() as f32;
 
@@ -161,12 +198,13 @@ async fn main() {
     // Setup
     // Optional random seed
     // rand::srand(macroquad::miniquad::date::now() as _);
-    let mut points:Vec<Point2<f32>> = Vec::new();
-
-    for _i in 0..NUM_POINTS {
-        points.push(Point2::new(rand::gen_range(0.0, width),
-                                rand::gen_range(0.0, height)));
-    }
+    // let mut points:Vec<Point2<f32>> = Vec::new();
+    //
+    // for _i in 0..NUM_POINTS {
+    //     points.push(Point2::new(rand::gen_range(0.0, width),
+    //                             rand::gen_range(0.0, height)));
+    // }
+    let mut points = load_points(IMG_IN);
 
     let mut triangulation: DelaunayTriangulation<_> = DelaunayTriangulation::new();
     for point in &points {
@@ -200,7 +238,7 @@ async fn main() {
         // }
 
         for polygon in &polygons {
-            draw_polygon_lines(polygon, BLACK);
+            // draw_polygon_lines(polygon, BLACK);
             let p = polygon.centroid();
             if let Some(seed) = polygon.seed {
                 if polygon.enclosed {

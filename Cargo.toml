@@ -6,3 +6,4 @@ edition = "2024"
 [dependencies]
 macroquad = "0.4"
 spade = "2.15.0"
+image = "0.25.8"
