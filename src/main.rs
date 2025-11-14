@@ -9,7 +9,7 @@ use drawable::gcode::*;
 const POINT_R: f32 = 2.0;
 const LINE_T:  f32 = 1.0;
 
-const NUM_POINTS: u32 = 10;
+const NUM_POINTS: u32 = 100;
 
 fn draw_point(x: f32, y: f32, color: Color) {
     draw_circle(x, y, POINT_R, color);
@@ -189,7 +189,23 @@ async fn main() {
                 if let Some(start) = from {
                     if let Some(end) = to {
                         draw_line(start.x, start.y, end.x, end.y, LINE_T, BLACK);
+                    } else {
+                        let direction = edge.direction_vector();
+                        // println!("direction: {:?}", direction);
+                        draw_point(start.x, start.y, RED);
+                        draw_point(direction.x, direction.y, BLUE);
+                        // draw_line(start.x, start.y, direction.x, direction.y, LINE_T, BLUE);
+                        // y = mx + b
+                        // b = y - mx
+                        let m = (direction.y - start.y) / (direction.x - start.x);
+                        let b = direction.y - m * direction.x;
                     }
+                } else if let Some(end) = to {
+                    let direction = edge.direction_vector();
+                    // println!("direction: {:?}", direction);
+                    draw_point(end.x, end.y, RED);
+                    draw_point(direction.x, direction.y, BLUE);
+                    // draw_line(end.x, end.y, direction.x, direction.y, LINE_T, BLUE);
                 }
             }
         }
