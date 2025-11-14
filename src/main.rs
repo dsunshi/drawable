@@ -12,13 +12,15 @@ const LINE_T:  f32 = 1.0;
 const NUM_POINTS: u32 = 100;
 
 struct Polygon {
-    pub points: Vec<Point2<f32>>
+    pub points: Vec<Point2<f32>>,
+    pub seed: Point2<f32>
 }
 
 impl Polygon {
     pub fn new() -> Self {
         Polygon {
             points: Vec::new(),
+            seed: Point2::new(0.0, 0.0),
         }
     }
 
@@ -54,7 +56,26 @@ fn draw_polygon_lines(polygon: &Polygon, color: Color) {
     draw_line(points[n].x, points[n].y, points[0].x, points[0].y, LINE_T, RED);
 }
 
-fn voronoi_polygons(triangulation: &DelaunayTriangulation<Point2<f32>>) -> Vec<Polygon> {
+fn point_dist(a: Point2<f32>, b: &Point2<f32>) -> f32 {
+    ((a.x - b.x).powi(2) + (a.y - b.y).powi(2)).sqrt()
+}
+
+fn nearest_point(c: Point2<f32>, points: &Vec<Point2<f32>>) -> Point2<f32> {
+    let mut min_dist: f32 = f32::MAX;
+    let mut nearest: Point2<f32> = Point2::new(0.0, 0.0);
+
+    for point in points {
+        let dist = point_dist(c, point);
+        if dist < min_dist {
+            min_dist = dist;
+            nearest  = *point;
+        }
+    }
+
+    nearest
+}
+
+fn voronoi_polygons(triangulation: &DelaunayTriangulation<Point2<f32>>, seed_points: &Vec<Point2<f32>>) -> Vec<Polygon> {
     let mut polygons: Vec<Polygon> = Vec::new();
 
     for face in triangulation.voronoi_faces() {
@@ -79,6 +100,7 @@ fn voronoi_polygons(triangulation: &DelaunayTriangulation<Point2<f32>>) -> Vec<P
         }
 
         if enclosed {
+            polygon.seed = nearest_point(polygon.centroid(), seed_points);
             polygons.push(polygon);
         }
     }
@@ -115,21 +137,22 @@ async fn main() {
         gcode.goto(point.x, point.y);
     }
 
-    let polygons = voronoi_polygons(&triangulation);
+    let polygons = voronoi_polygons(&triangulation, &points);
 
     gcode.save("drawing.gcode");
 
     loop {
         clear_background(WHITE);
 
-        for point in &points {
-            draw_point(point.x, point.y, BLACK);
-        }
+        // for point in &points {
+        //     draw_point(point.x, point.y, BLACK);
+        // }
 
         for polygon in &polygons {
             draw_polygon_lines(polygon, BLACK);
             let p = polygon.centroid();
             draw_point(p.x, p.y, RED);
+            draw_point(polygon.seed.x, polygon.seed.y, BLACK);
         }
 
         // for face in triangulation.inner_faces() {
