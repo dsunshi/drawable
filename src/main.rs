@@ -1,27 +1,27 @@
 use macroquad::prelude::*;
 use macroquad::rand;
 
-// use spade::handles::{VoronoiVertex::Inner, VoronoiVertex::Outer};
 use spade::{DelaunayTriangulation, Point2, Triangulation};
 
 use drawable::gcode::*;
 
-const POINT_R: f32 = 2.0;
-const LINE_T:  f32 = 1.0;
+const POINT_R:   f32 = 2.0;
+const LINE_T:    f32 = 1.0;
+const LERP_RATE: f32 = 0.01;
 
 const NUM_POINTS: u32 = 100;
 
 struct Polygon {
-    pub points: Vec<Point2<f32>>,
-    pub seed:   Option<Point2<f32>>,
+    pub points:   Vec<Point2<f32>>,
+    pub seed:     Option<Point2<f32>>,
     pub enclosed: bool,
 }
 
 impl Polygon {
     pub fn new() -> Self {
         Polygon {
-            points: Vec::new(),
-            seed:   None,
+            points:   Vec::new(),
+            seed:     None,
             enclosed: false,
         }
     }
@@ -33,8 +33,8 @@ impl Polygon {
     pub fn relax(&mut self) {
         if let Some(seed) = self.seed {
             let c = self.centroid();
-            let x = Self::lerp(seed.x, c.x, 0.0001);
-            let y = Self::lerp(seed.y, c.y, 0.0001);
+            let x = Self::lerp(seed.x, c.x, LERP_RATE);
+            let y = Self::lerp(seed.y, c.y, LERP_RATE);
 
             self.seed = Some(Point2::new(x, y));
         }
@@ -200,9 +200,9 @@ async fn main() {
             }
         }
 
-        // for polygon in &mut polygons {
-        //     polygon.relax();
-        // }
+        for polygon in &mut polygons {
+            polygon.relax();
+        }
 
         update_points(&polygons, &mut points);
 
@@ -213,7 +213,6 @@ async fn main() {
         //   let c = as_vec(vertices[2].position());
         //   draw_triangle_lines(a, b, c, LINE_T, BLACK);
         // }
-
 
         next_frame().await
     }
