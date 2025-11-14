@@ -21,6 +21,19 @@ impl Polygon {
             points: Vec::new(),
         }
     }
+
+    pub fn centroid(&self) -> Point2<f32> {
+        let mut c: Point2<f32> = Point2::new(0.0, 0.0);
+
+        for point in &self.points {
+            c.x = c.x + point.x;
+            c.y = c.y + point.y;
+        }
+        c.x = c.x / self.points.len() as f32;
+        c.y = c.y / self.points.len() as f32;
+
+        c
+    }
 }
 
 fn draw_point(x: f32, y: f32, color: Color) {
@@ -115,6 +128,8 @@ async fn main() {
 
         for polygon in &polygons {
             draw_polygon_lines(polygon, BLACK);
+            let p = polygon.centroid();
+            draw_point(p.x, p.y, RED);
         }
 
         // for face in triangulation.inner_faces() {
@@ -123,32 +138,6 @@ async fn main() {
         //   let b = as_vec(vertices[1].position());
         //   let c = as_vec(vertices[2].position());
         //   draw_triangle_lines(a, b, c, LINE_T, BLACK);
-        // }
-
-        // for face in triangulation.voronoi_faces() {
-        //     // println!("found a face!");
-        //     // let mut shape: Vec<Vec2> = Vec::new(); 
-        //     let edges = face.adjacent_edges();
-        //     for edge in edges {
-        //         let from = edge.from().position();
-        //         let to = edge.to().position();
-        //         if let Some(start) = from {
-        //             if let Some(end) = to {
-        //                 draw_line(start.x, start.y, end.x, end.y, LINE_T, BLACK);
-        //             } else {
-        //                 let direction = edge.direction_vector();
-        //                 // println!("direction: {:?}", direction);
-        //                 draw_point(start.x, start.y, RED);
-        //                 draw_point(direction.x, direction.y, BLUE);
-        //             }
-        //         } else if let Some(end) = to {
-        //             let direction = edge.direction_vector();
-        //             // println!("direction: {:?}", direction);
-        //             draw_point(end.x, end.y, RED);
-        //             draw_point(direction.x, direction.y, BLUE);
-        //             // draw_line(end.x, end.y, direction.x, direction.y, LINE_T, BLUE);
-        //         }
-        //     }
         // }
 
         next_frame().await
