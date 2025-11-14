@@ -24,6 +24,16 @@ impl Polygon {
         }
     }
 
+    fn lerp(v0: f32, v1: f32, t: f32) -> f32 {
+      (1.0 - t) * v0 + t * v1
+    }
+
+    pub fn relax(&mut self) {
+        let c = self.centroid();
+        self.seed.x = Self::lerp(self.seed.x, c.x, 0.1);
+        self.seed.y = Self::lerp(self.seed.y, c.y, 0.1);
+    }
+
     pub fn centroid(&self) -> Point2<f32> {
         let mut c: Point2<f32> = Point2::new(0.0, 0.0);
 
@@ -75,6 +85,13 @@ fn nearest_point(c: Point2<f32>, points: &Vec<Point2<f32>>) -> Point2<f32> {
     nearest
 }
 
+fn update_points(polygons: &Vec<Polygon>, points: &mut Vec<Point2<f32>>) {
+    points.clear();
+    for polygon in polygons {
+        points.push(polygon.seed);
+    }
+}
+
 fn voronoi_polygons(triangulation: &DelaunayTriangulation<Point2<f32>>, seed_points: &Vec<Point2<f32>>) -> Vec<Polygon> {
     let mut polygons: Vec<Polygon> = Vec::new();
 
@@ -121,27 +138,40 @@ async fn main() {
     // Optional random seed
     // rand::srand(macroquad::miniquad::date::now() as _);
     let mut points:Vec<Point2<f32>> = Vec::new();
-    let mut triangulation: DelaunayTriangulation<_> = DelaunayTriangulation::new();
 
     for _i in 0..NUM_POINTS {
         points.push(Point2::new(rand::gen_range(0.0, width),
                                 rand::gen_range(0.0, height)));
     }
 
-    for point in &points {
-        _ = triangulation.insert(*point).map_err(|_err| {
-            eprintln!("Failed to insert point into triangulation!");
-        });
-
-        // gcode test
-        gcode.goto(point.x, point.y);
-    }
-
-    let polygons = voronoi_polygons(&triangulation, &points);
+    // let mut triangulation: DelaunayTriangulation<_> = DelaunayTriangulation::new();
+    // for point in &points {
+    //     _ = triangulation.insert(*point).map_err(|_err| {
+    //         eprintln!("Failed to insert point into triangulation!");
+    //     });
+    //
+    //     // gcode test
+    //     gcode.goto(point.x, point.y);
+    // }
+    //
+    // let mut polygons = voronoi_polygons(&triangulation, &points);
 
     gcode.save("drawing.gcode");
 
     loop {
+        let mut triangulation: DelaunayTriangulation<_> = DelaunayTriangulation::new();
+
+        for point in &points {
+            _ = triangulation.insert(*point).map_err(|_err| {
+                eprintln!("Failed to insert point into triangulation!");
+            });
+
+            // gcode test
+            gcode.goto(point.x, point.y);
+        }
+
+        let mut polygons = voronoi_polygons(&triangulation, &points);
+
         clear_background(WHITE);
 
         // for point in &points {
@@ -154,6 +184,12 @@ async fn main() {
             draw_point(p.x, p.y, RED);
             draw_point(polygon.seed.x, polygon.seed.y, BLACK);
         }
+
+        for polygon in &mut polygons {
+            polygon.relax();
+        }
+
+        update_points(&polygons, &mut points);
 
         // for face in triangulation.inner_faces() {
         //   let vertices = face.vertices();
