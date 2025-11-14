@@ -3,6 +3,7 @@
 ## Dependencies
  - [macroquad](https://crates.io/crates/macroquad)
  - [spade](https://crates.io/crates/spade)
+ - [image](https://crates.io/crates/image)
 
 ## Reference
 
