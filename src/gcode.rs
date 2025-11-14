@@ -5,13 +5,13 @@ use std::fs::File;
 
 const FEED_RATE: f32 = 1000.0;
 
-const Z0: f32 = 5.0;
-const Z_END: f32 = 80.0;
-const DEPTH: f32 = 3.0;
+const Z0: f32       = 5.0;
+const Z_END: f32    = 80.0;
+const Z_PLUNGE: f32 = 3.0;
 
 pub struct Printer {
     min: (f32, f32),
-    max: (f32, f32),
+    _max: (f32, f32),
     pub width:  f32,
     pub height: f32,
     mode : PrintMode,
@@ -31,7 +31,7 @@ impl Printer {
                 mode: PrintMode) -> Self {
         Printer {
             min:     (minx, miny),
-            max:     (maxx, maxy),
+            _max:     (maxx, maxy),
             width:    maxx - minx,
             height:   maxy - miny,
             mode:     mode,
@@ -60,18 +60,20 @@ impl Printer {
             y = yp;
         }
 
+        self.commands.push(format!("; draw_point({:.1}, {:.1})", xp, yp));
         if self.mode == PrintMode::DOTS {
             self.commands.push(format!("G1 X{:.1} Y{:.1} F{:.1}", x, y, FEED_RATE));
             // Pen down for the dot
             self.commands.push("G91   ; Switch to relative coordinates".to_owned());
-            self.commands.push(format!("G1 Z-1.0 F100"));
-            self.commands.push(format!("G1 Z1.0 F100"));
+            self.commands.push(format!("G1 Z-{:.1} F100", Z_PLUNGE));
+            self.commands.push(format!("G1 Z{:.1}  F100", Z_PLUNGE));
             self.commands.push("G90   ; Switch back to  absolute coordinates".to_owned());
         } else if self.mode == PrintMode::LINES {
             self.commands.push(format!("G1 X{:.1} Y{:.1} F{:.1}", x, y, FEED_RATE));
         }
         else {
         }
+        self.commands.push("".to_owned());
     }
 
     pub fn save(&self, filename: &str) {
@@ -81,7 +83,11 @@ impl Printer {
             _ = file.write_all(cmd.as_bytes());
             _ = file.write_all("\n".as_bytes());
         }
-        _ = file.write_all("M84 ; disable motors\n".as_bytes());
+        _ = file.write_all("; Lift the head up before turning off\n".as_bytes());
+        _ = file.write_all("G91   ; Switch to relative coordinates\n".as_bytes());
+        _ = file.write_all(format!("G1 Z{:.1}  {:.1}\n", Z_END, FEED_RATE).as_bytes());
+        _ = file.write_all("G90   ; Switch back to  absolute coordinates\n".as_bytes());
+        _ = file.write_all("M84   ; disable motors\n".as_bytes());
     }
 
     fn init(mut self) -> Self {
@@ -93,6 +99,7 @@ impl Printer {
         self.commands.push("G21   ; set units to millimeters".to_owned());
         self.commands.push("G90   ; use absolute coordinates".to_owned());
         self.commands.push("G28 W ; home all without mesh bed level".to_owned());
+        self.commands.push("".to_owned());
         
         self.commands.push(format!("G1 X{:.1} Y{:.1}, Z{:.1}, F{:.1}",
                 minx,
@@ -100,6 +107,8 @@ impl Printer {
                 Z0,
                 FEED_RATE));
         self.commands.push("G92 X0 Y0 Z0 ; set current position to origin".to_owned());
+        self.commands.push("".to_owned());
+
         self
     }
 }
