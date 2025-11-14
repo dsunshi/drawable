@@ -13,14 +13,16 @@ const NUM_POINTS: u32 = 100;
 
 struct Polygon {
     pub points: Vec<Point2<f32>>,
-    pub seed: Point2<f32>
+    pub seed:   Option<Point2<f32>>,
+    pub enclosed: bool,
 }
 
 impl Polygon {
     pub fn new() -> Self {
         Polygon {
             points: Vec::new(),
-            seed: Point2::new(0.0, 0.0),
+            seed:   None,
+            enclosed: false,
         }
     }
 
@@ -29,9 +31,13 @@ impl Polygon {
     }
 
     pub fn relax(&mut self) {
-        let c = self.centroid();
-        self.seed.x = Self::lerp(self.seed.x, c.x, 0.1);
-        self.seed.y = Self::lerp(self.seed.y, c.y, 0.1);
+        if let Some(seed) = self.seed {
+            let c = self.centroid();
+            let x = Self::lerp(seed.x, c.x, 0.0001);
+            let y = Self::lerp(seed.y, c.y, 0.0001);
+
+            self.seed = Some(Point2::new(x, y));
+        }
     }
 
     pub fn centroid(&self) -> Point2<f32> {
@@ -57,28 +63,30 @@ fn draw_point(x: f32, y: f32, color: Color) {
 // }
 
 fn draw_polygon_lines(polygon: &Polygon, color: Color) {
-    let points = &polygon.points;
-    let n = points.len() - 1;
-    
-    for i in 0..n {
-        draw_line(points[i].x, points[i].y, points[i + 1].x, points[i + 1].y, LINE_T, color);
+    if polygon.enclosed {
+        let points = &polygon.points;
+        let n = points.len() - 1;
+        
+        for i in 0..n {
+            draw_line(points[i].x, points[i].y, points[i + 1].x, points[i + 1].y, LINE_T, color);
+        }
+        draw_line(points[n].x, points[n].y, points[0].x, points[0].y, LINE_T, RED);
     }
-    draw_line(points[n].x, points[n].y, points[0].x, points[0].y, LINE_T, RED);
 }
 
 fn point_dist(a: Point2<f32>, b: &Point2<f32>) -> f32 {
     ((a.x - b.x).powi(2) + (a.y - b.y).powi(2)).sqrt()
 }
 
-fn nearest_point(c: Point2<f32>, points: &Vec<Point2<f32>>) -> Point2<f32> {
+fn nearest_point(c: Point2<f32>, points: &Vec<Point2<f32>>) -> Option<Point2<f32>> {
     let mut min_dist: f32 = f32::MAX;
-    let mut nearest: Point2<f32> = Point2::new(0.0, 0.0);
+    let mut nearest: Option<Point2<f32>> = None;
 
     for point in points {
         let dist = point_dist(c, point);
         if dist < min_dist {
             min_dist = dist;
-            nearest  = *point;
+            nearest  = Some(*point);
         }
     }
 
@@ -88,7 +96,9 @@ fn nearest_point(c: Point2<f32>, points: &Vec<Point2<f32>>) -> Point2<f32> {
 fn update_points(polygons: &Vec<Polygon>, points: &mut Vec<Point2<f32>>) {
     points.clear();
     for polygon in polygons {
-        points.push(polygon.seed);
+        if let Some(seed) = polygon.seed {
+            points.push(seed);
+        }
     }
 }
 
@@ -116,10 +126,12 @@ fn voronoi_polygons(triangulation: &DelaunayTriangulation<Point2<f32>>, seed_poi
             }
         }
 
-        if enclosed {
-            polygon.seed = nearest_point(polygon.centroid(), seed_points);
-            polygons.push(polygon);
+        polygon.seed = nearest_point(polygon.centroid(), seed_points);
+        if enclosed && polygon.points.len() > 0 {
+            polygon.enclosed = true;
         }
+
+        polygons.push(polygon);
     }
 
     polygons
@@ -144,17 +156,17 @@ async fn main() {
                                 rand::gen_range(0.0, height)));
     }
 
-    // let mut triangulation: DelaunayTriangulation<_> = DelaunayTriangulation::new();
-    // for point in &points {
-    //     _ = triangulation.insert(*point).map_err(|_err| {
-    //         eprintln!("Failed to insert point into triangulation!");
-    //     });
-    //
-    //     // gcode test
-    //     gcode.goto(point.x, point.y);
-    // }
-    //
-    // let mut polygons = voronoi_polygons(&triangulation, &points);
+    let mut triangulation: DelaunayTriangulation<_> = DelaunayTriangulation::new();
+    for point in &points {
+        _ = triangulation.insert(*point).map_err(|_err| {
+            eprintln!("Failed to insert point into triangulation!");
+        });
+
+        // gcode test
+        gcode.goto(point.x, point.y);
+    }
+
+    let mut polygons = voronoi_polygons(&triangulation, &points);
 
     gcode.save("drawing.gcode");
 
@@ -165,9 +177,6 @@ async fn main() {
             _ = triangulation.insert(*point).map_err(|_err| {
                 eprintln!("Failed to insert point into triangulation!");
             });
-
-            // gcode test
-            gcode.goto(point.x, point.y);
         }
 
         let mut polygons = voronoi_polygons(&triangulation, &points);
@@ -182,12 +191,18 @@ async fn main() {
             draw_polygon_lines(polygon, BLACK);
             let p = polygon.centroid();
             draw_point(p.x, p.y, RED);
-            draw_point(polygon.seed.x, polygon.seed.y, BLACK);
+            if let Some(seed) = polygon.seed {
+                if polygon.enclosed {
+                    draw_point(seed.x, seed.y, BLACK);
+                } else {
+                    draw_point(seed.x, seed.y, BLUE);
+                }
+            }
         }
 
-        for polygon in &mut polygons {
-            polygon.relax();
-        }
+        // for polygon in &mut polygons {
+        //     polygon.relax();
+        // }
 
         update_points(&polygons, &mut points);
 
@@ -198,6 +213,7 @@ async fn main() {
         //   let c = as_vec(vertices[2].position());
         //   draw_triangle_lines(a, b, c, LINE_T, BLACK);
         // }
+
 
         next_frame().await
     }

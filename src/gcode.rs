@@ -5,9 +5,11 @@ use std::fs::File;
 
 const FEED_RATE: f32 = 1000.0;
 
-const Z0: f32       = 5.0;
+const Z0: f32       = 10.0;
 const Z_END: f32    = 80.0;
-const Z_PLUNGE: f32 = 3.0;
+const Z_PLUNGE: f32 = 4.0;
+
+const G_MODE: u32 = 0;
 
 pub struct Printer {
     min: (f32, f32),
@@ -62,14 +64,16 @@ impl Printer {
 
         self.commands.push(format!("; draw_point({:.1}, {:.1})", xp, yp));
         if self.mode == PrintMode::DOTS {
-            self.commands.push(format!("G1 X{:.1} Y{:.1} F{:.1}", x, y, FEED_RATE));
+            self.commands.push(format!("G{} X{:.1} Y{:.1} F{:.1}", G_MODE, x, y, FEED_RATE));
             // Pen down for the dot
-            self.commands.push("G91   ; Switch to relative coordinates".to_owned());
-            self.commands.push(format!("G1 Z-{:.1} F100", Z_PLUNGE));
-            self.commands.push(format!("G1 Z{:.1}  F100", Z_PLUNGE));
-            self.commands.push("G90   ; Switch back to  absolute coordinates".to_owned());
+            self.commands.push(format!("G{} Z{:.1} F100", G_MODE,  Z_PLUNGE));
+            self.commands.push(format!("G{} Z{:.1} F100", G_MODE,  Z0));
+            // self.commands.push("G91   ; Switch to relative coordinates".to_owned());
+            // self.commands.push(format!("G1 Z-{:.1} F100", Z_PLUNGE));
+            // self.commands.push(format!("G1 Z{:.1}  F100", Z_PLUNGE));
+            // self.commands.push("G90   ; Switch back to  absolute coordinates".to_owned());
         } else if self.mode == PrintMode::LINES {
-            self.commands.push(format!("G1 X{:.1} Y{:.1} F{:.1}", x, y, FEED_RATE));
+            self.commands.push(format!("G{} X{:.1} Y{:.1} F{:.1}", G_MODE, x, y, FEED_RATE));
         }
         else {
         }
@@ -106,7 +110,7 @@ impl Printer {
                 miny,
                 Z0,
                 FEED_RATE));
-        self.commands.push("G92 X0 Y0 Z0 ; set current position to origin".to_owned());
+        self.commands.push("G92 X0 Y0    ; set current position to origin".to_owned());
         self.commands.push("".to_owned());
 
         self
