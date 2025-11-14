@@ -7,9 +7,9 @@ use drawable::gcode::*;
 
 const POINT_R:   f32 = 2.0;
 const LINE_T:    f32 = 1.0;
-const LERP_RATE: f32 = 0.01;
+const LERP_RATE: f32 = 0.1;
 
-const NUM_POINTS: u32 = 100;
+const NUM_POINTS: u32 = 1000;
 
 struct Polygon {
     pub points:   Vec<Point2<f32>>,
@@ -31,24 +31,36 @@ impl Polygon {
     }
 
     pub fn relax(&mut self) {
-        if let Some(seed) = self.seed {
-            let c = self.centroid();
-            let x = Self::lerp(seed.x, c.x, LERP_RATE);
-            let y = Self::lerp(seed.y, c.y, LERP_RATE);
+        if self.enclosed {
+            if let Some(seed) = self.seed {
+                let c = self.centroid();
+                let x = Self::lerp(seed.x, c.x, LERP_RATE);
+                let y = Self::lerp(seed.y, c.y, LERP_RATE);
 
-            self.seed = Some(Point2::new(x, y));
+                self.seed = Some(Point2::new(x, y));
+            }
         }
     }
 
     pub fn centroid(&self) -> Point2<f32> {
         let mut c: Point2<f32> = Point2::new(0.0, 0.0);
 
-        for point in &self.points {
-            c.x = c.x + point.x;
-            c.y = c.y + point.y;
+        let n = self.points.len();
+        let mut area = 0.0;
+        
+        for i in 0..n {
+            let v0 = self.points[i];
+            let v1 = self.points[(i + 1) % n];
+            let cross_p = v0.x * v1.y - v1.x * v0.y;
+
+            area += cross_p;
+            c.x += (v0.x + v1.x) * cross_p;
+            c.y += (v0.y + v1.y) * cross_p;
         }
-        c.x = c.x / self.points.len() as f32;
-        c.y = c.y / self.points.len() as f32;
+
+        area /= 2.0;
+        c.x  /= 6.0 * area;
+        c.y  /= 6.0 * area;
 
         c
     }
@@ -190,11 +202,11 @@ async fn main() {
         for polygon in &polygons {
             draw_polygon_lines(polygon, BLACK);
             let p = polygon.centroid();
-            draw_point(p.x, p.y, RED);
             if let Some(seed) = polygon.seed {
                 if polygon.enclosed {
                     draw_point(seed.x, seed.y, BLACK);
                 } else {
+                    draw_point(p.x, p.y, RED);
                     draw_point(seed.x, seed.y, BLUE);
                 }
             }
