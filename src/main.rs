@@ -37,13 +37,9 @@ impl Stipple {
         for i in 0..n {
             '_30Loop: for _ in 0..30 {
                 let x = rng.random_range(0.0..(width as f64));
-               let y = rng.random_range(0.0..(height as f64));
+                let y = rng.random_range(0.0..(height as f64));
                 let index = y as usize * width + x as usize;
                 h_points.insert(i, Coord { x, y });
-
-                if index > width * height {
-                    println!("({}, {})", x, y);
-                }
 
                 if rng.random_range(0.0..1.0) < data[index] {
                     break '_30Loop;
@@ -113,7 +109,6 @@ impl Stipple {
 
 pub fn as_bytes(img: &DynamicImage) -> Vec<f64> {
     let (width, height)     = img.dimensions();
-    // let mut bytes: Vec<f64> = Vec::with_capacity((width * height) as usize);
     let mut bytes: Vec<f64> = vec![0.0; (width * height) as usize];
 
     for x in 0..width {
@@ -122,17 +117,16 @@ pub fn as_bytes(img: &DynamicImage) -> Vec<f64> {
             let pixel = img.get_pixel(x as u32, y as u32);
             let index = (y * width + x) as usize;
 
-            if index >= (width * height) as usize {
-                println!("({}, {})", x, y);
-            }
-
             let r = pixel[0] as f32;
             let g = pixel[1] as f32;
             let b = pixel[2] as f32;
 
-            // let lum = 0.299 * r + 0.587 * g + 0.114 * b;
-            let lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+            let mut lum = 0.299 * r + 0.587 * g + 0.114 * b;
+            // let lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
             // let lum = (r + g + b) / 3;
+            
+            lum /= 255.0;
+            lum = 1.0 - lum;
 
             bytes[index] = lum as f64;
         }
@@ -147,12 +141,9 @@ async fn main() {
     let (width, height) = image.dimensions();
     println!("Image size: {} x {}", width, height);
     
-    let mut stipple = Stipple::new(width as usize, height as usize, as_bytes(&image), 10000);
+    let mut stipple = Stipple::new(width as usize, height as usize, as_bytes(&image), 20000);
 
     request_new_screen_size(width as f32, height as f32);
-
-    // let width  = screen_width()  as f32;
-    // let height = screen_height() as f32;
 
     loop {
         clear_background(WHITE);
